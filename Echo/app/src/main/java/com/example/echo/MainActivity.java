@@ -6,6 +6,7 @@ import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.speech.RecognitionListener;
@@ -18,6 +19,12 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Locale;
 
@@ -30,6 +37,10 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
     final int PERMISSION = 1;
     private TextToSpeech tts;
     ArrayList<String> matches;
+    String ip_add="192.168.35.49";
+    int port_num=8888;
+
+    Socket socket = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,6 +67,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
             public void onClick(View v) {
                 mRecognizer.setRecognitionListener(listener);
                 mRecognizer.startListening(intent);
+                Log.d("test","wait~");
             }
         });
 
@@ -163,7 +175,11 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
                 tts_con=tts_con+matches.get(i);
                 textView.setText(matches.get(i));
             }
-            speakOut(tts_con);
+
+            MyClientTask myClientTask = new MyClientTask(ip_add, port_num, tts_con);
+            Log.d("msg1",tts_con);
+            myClientTask.execute();
+            //speakOut(tts_con);
         }
 
         @Override
@@ -173,4 +189,71 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         public void onEvent(int eventType, Bundle params) {}
     };
 
+    public class MyClientTask extends AsyncTask<Void, Void, Void> {
+        String dstAddress;
+        int dstPort;
+        String response = "";
+        String myMessage = "";
+
+        //constructor
+        MyClientTask(String addr, int port, String message){
+            dstAddress = addr;
+            dstPort = port;
+            myMessage = message;
+        }
+
+        @Override
+        protected Void doInBackground(Void... arg0) {
+
+            Socket socket = null;
+            myMessage = myMessage.toString();
+            try {
+                socket = new Socket(dstAddress, dstPort);
+                //송신
+                OutputStream out = socket.getOutputStream();
+                out.write(myMessage.getBytes());
+
+                //수신
+                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(1024);
+                byte[] buffer = new byte[1024];
+                int bytesRead;
+                InputStream inputStream = socket.getInputStream();
+                /*
+                 * notice:
+                 * inputStream.read() will block if no data return
+                 */
+                while ((bytesRead = inputStream.read(buffer)) != -1){
+                    byteArrayOutputStream.write(buffer, 0, bytesRead);
+                    response += byteArrayOutputStream.toString("UTF-8");
+                }
+                response = "서버의 응답: " + response;
+
+            } catch (UnknownHostException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+                response = "UnknownHostException: " + e.toString();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+                response = "IOException: " + e.toString();
+            }finally{
+                if(socket != null){
+                    try {
+                        socket.close();
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+                }
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void result) {
+            textView.setText(response);
+            speakOut(response);
+            super.onPostExecute(result);
+        }
+    }
 }
