@@ -39,6 +39,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
     ArrayList<String> matches;
     String ip_add="192.168.35.49";
     int port_num=8888;
+    public static final int MY_UI = 1234;
 
     Socket socket = null;
 
@@ -61,6 +62,8 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         intent=new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         intent.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE,getPackageName());
         intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE,"ko-KR");
+        mRecognizer.setRecognitionListener(listener);
+        mRecognizer.startListening(intent);
 
         sttBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -78,6 +81,10 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         //tts.setPitch((float) 0.6);
         tts.setSpeechRate((float) 1.0);
         tts.speak(text,TextToSpeech.QUEUE_FLUSH,null,"id1");
+        while (tts.isSpeaking() ) {
+        };
+        startActivityForResult(new Intent(getApplicationContext(), MainActivity.class), MY_UI);
+        finish();
     }
 
     @Override
@@ -86,6 +93,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
             tts.stop();
             tts.shutdown();
         }
+        finish();
         super.onDestroy();
     }
 
@@ -149,6 +157,8 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
                     message = "찾을 수 없음";
                     break;
                 case SpeechRecognizer.ERROR_RECOGNIZER_BUSY:
+                    startActivityForResult(new Intent(getApplicationContext(), MainActivity.class), MY_UI);
+                    finish();
                     message = "RECOGNIZER가 바쁨";
                     break;
                 case SpeechRecognizer.ERROR_SERVER:
@@ -227,6 +237,8 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
                     response += byteArrayOutputStream.toString("UTF-8");
                 }
                 response = "서버의 응답: " + response;
+                //Log.d("repeat2","!!!!!!");
+
 
             } catch (UnknownHostException e) {
                 // TODO Auto-generated catch block
@@ -253,7 +265,18 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         protected void onPostExecute(Void result) {
             textView.setText(response);
             speakOut(response);
+            //Log.d("repeat","??????");
             super.onPostExecute(result);
         }
+    }
+    @Override
+    public void onBackPressed() {
+        Toast.makeText(this, "Back button pressed.", Toast.LENGTH_SHORT).show();
+        if (tts != null)  {
+            tts.stop();
+            tts.shutdown();
+        }
+        finish();
+        super.onBackPressed();
     }
 }
