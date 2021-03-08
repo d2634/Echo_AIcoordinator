@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -19,20 +20,30 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Serializable;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
-public class MainActivity extends AppCompatActivity implements TextToSpeech.OnInitListener{
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.WebSocket;
+import okhttp3.WebSocketListener;
 
+public class MainActivity extends AppCompatActivity implements TextToSpeech.OnInitListener, View.OnClickListener{
     Intent intent;
-    SpeechRecognizer mRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
-    Button sttBtn;
+    public SpeechRecognizer mRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
+    public Button sttBtn;
     TextView textView;
     final int PERMISSION = 1;
     private TextToSpeech tts;
@@ -40,8 +51,14 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
     String ip_add="192.168.35.49";
     int port_num=8888;
     public static final int MY_UI = 1234;
-
+    private WebSocket webSocket;
+    private String SERVER_PATH = "ws://192.168.35.42:3000";
+    //private String SERVER_PATH = "ws://192.168.35.203:3000";
+    String msg="";
     Socket socket = null;
+    public OkHttpClient client;
+    Request request;
+    private static final int NORMAL_CLOSURE_STATUS = 1000;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,34 +74,56 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         }
 
         textView = (TextView)findViewById(R.id.sttResult);
-        sttBtn = (Button) findViewById(R.id.sttStart);
+        final Button sttBtn = (Button) findViewById(R.id.sttStart);
 
         intent=new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         intent.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE,getPackageName());
         intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE,"ko-KR");
+
+        client = new OkHttpClient();
+        request = new Request.Builder().url(SERVER_PATH).build();
+
         mRecognizer.setRecognitionListener(listener);
         mRecognizer.startListening(intent);
-
-        sttBtn.setOnClickListener(new View.OnClickListener() {
+        /*sttBtn.setOnClickListener(new Button.OnClickListener() {
             @Override
             public void onClick(View v) {
+                Log.d("???","된거야??");
                 mRecognizer.setRecognitionListener(listener);
                 mRecognizer.startListening(intent);
                 Log.d("test","wait~");
             }
-        });
-
+        });*/
+        sttBtn.setOnClickListener((View.OnClickListener) this);
     }
+
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    private void speakOut(String tts_con) {
+    public void speakOut(String tts_con) {
+        Log.d("speak2",tts_con);
         CharSequence text = tts_con;
         //tts.setPitch((float) 0.6);
         tts.setSpeechRate((float) 1.0);
         tts.speak(text,TextToSpeech.QUEUE_FLUSH,null,"id1");
         while (tts.isSpeaking() ) {
         };
-        startActivityForResult(new Intent(getApplicationContext(), MainActivity.class), MY_UI);
-        finish();
+        Log.d("???",":<");
+        sttBtn.performClick();
+        //intent=new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        //intent.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE,getPackageName());
+        //intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE,"ko-KR");
+
+        //mRecognizer.setRecognitionListener(listener);
+        //mRecognizer.startListening(intent);
+        //startActivityForResult(new Intent(getApplicationContext(), MainActivity.class), MY_UI);
+        //finish();
+    }
+
+    @Override
+    public void onClick(View v) {
+        Log.d("???","된거야??");
+        mRecognizer.setRecognitionListener(listener);
+        mRecognizer.startListening(intent);
+        Log.d("test","wait~");
     }
 
     @Override
@@ -92,6 +131,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         if (tts != null)  {
             tts.stop();
             tts.shutdown();
+            webSocket.close(NORMAL_CLOSURE_STATUS, null);
         }
         finish();
         super.onDestroy();
@@ -107,7 +147,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
                     || result == TextToSpeech.LANG_NOT_SUPPORTED) {
                 Log.e("TTS", "This Language is not supported");
             } else {
-                //speakOut();
+
             }
 
         } else {
@@ -116,6 +156,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
     }
 
     private RecognitionListener listener = new RecognitionListener() {
+
         @Override
         public void onReadyForSpeech(Bundle params) {
             Toast.makeText(getApplicationContext(),"음성인식을 시작합니다.",Toast.LENGTH_SHORT).show();
@@ -154,11 +195,15 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
                     message = "네트웍 타임아웃";
                     break;
                 case SpeechRecognizer.ERROR_NO_MATCH:
+                    mRecognizer.setRecognitionListener(listener);
+                    mRecognizer.startListening(intent);
                     message = "찾을 수 없음";
                     break;
                 case SpeechRecognizer.ERROR_RECOGNIZER_BUSY:
-                    startActivityForResult(new Intent(getApplicationContext(), MainActivity.class), MY_UI);
-                    finish();
+                    mRecognizer.setRecognitionListener(listener);
+                    mRecognizer.startListening(intent);
+                    //startActivityForResult(new Intent(getApplicationContext(), MainActivity.class), MY_UI);
+                    //finish();
                     message = "RECOGNIZER가 바쁨";
                     break;
                 case SpeechRecognizer.ERROR_SERVER:
@@ -185,11 +230,16 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
                 tts_con=tts_con+matches.get(i);
                 textView.setText(matches.get(i));
             }
-
-            MyClientTask myClientTask = new MyClientTask(ip_add, port_num, tts_con);
+            msg=tts_con;
+            /*runOnUiThread(() -> {
+                webSocket = client.newWebSocket(request, new SocketListener());
+            });*/
+            webSocket = client.newWebSocket(request, new SocketListener());
+            Log.d("...","nbb");
+            /*MyClientTask myClientTask = new MyClientTask(ip_add, port_num, tts_con);
             Log.d("msg1",tts_con);
-            myClientTask.execute();
-            //speakOut(tts_con);
+            myClientTask.execute();*/
+
         }
 
         @Override
@@ -199,77 +249,56 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         public void onEvent(int eventType, Bundle params) {}
     };
 
-    public class MyClientTask extends AsyncTask<Void, Void, Void> {
-        String dstAddress;
-        int dstPort;
-        String response = "";
-        String myMessage = "";
+    private void initiateSocketConnection(String tts_con) {
+        OkHttpClient client = new OkHttpClient();
+        Request request = new Request.Builder().url(SERVER_PATH).build();
+        webSocket = client.newWebSocket(request, new SocketListener());
+    }
 
-        //constructor
-        MyClientTask(String addr, int port, String message){
-            dstAddress = addr;
-            dstPort = port;
-            myMessage = message;
-        }
-
+    private  class SocketListener extends WebSocketListener {
         @Override
-        protected Void doInBackground(Void... arg0) {
+        public void onOpen(WebSocket webSocket, Response response) {
+            super.onOpen(webSocket, response);
 
-            Socket socket = null;
-            myMessage = myMessage.toString();
+            JSONObject jsonObject = new JSONObject();
             try {
-                socket = new Socket(dstAddress, dstPort);
-                //송신
-                OutputStream out = socket.getOutputStream();
-                out.write(myMessage.getBytes());
+                jsonObject.put("name","dahee");
+                jsonObject.put("message",msg);
 
-                //수신
-                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(1024);
-                byte[] buffer = new byte[1024];
-                int bytesRead;
-                InputStream inputStream = socket.getInputStream();
-                /*
-                 * notice:
-                 * inputStream.read() will block if no data return
-                 */
-                while ((bytesRead = inputStream.read(buffer)) != -1){
-                    byteArrayOutputStream.write(buffer, 0, bytesRead);
-                    response += byteArrayOutputStream.toString("UTF-8");
-                }
-                response = "서버의 응답: " + response;
-                //Log.d("repeat2","!!!!!!");
+                webSocket.send(jsonObject.toString());
+                //webSocket.send(msg);
+                jsonObject.put("isSent", true);
 
 
-            } catch (UnknownHostException e) {
-                // TODO Auto-generated catch block
+            } catch (JSONException e) {
                 e.printStackTrace();
-                response = "UnknownHostException: " + e.toString();
-            } catch (IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-                response = "IOException: " + e.toString();
-            }finally{
-                if(socket != null){
-                    try {
-                        socket.close();
-                    } catch (IOException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
-                }
             }
-            return null;
+
         }
 
         @Override
-        protected void onPostExecute(Void result) {
-            textView.setText(response);
-            speakOut(response);
-            //Log.d("repeat","??????");
-            super.onPostExecute(result);
+        public void onMessage(WebSocket webSocket, String s_text) {
+            super.onMessage(webSocket, s_text);
+            JSONObject jsonObject = null;
+            Log.d("speak",s_text);
+            //textView.setText(s_text);
+
+            speakOut(s_text);
+            try {
+                jsonObject = new JSONObject(s_text);
+
+                //textView.setText(text);
+                //speakOut(s_text);
+
+                jsonObject.put("isSent", false);
+            } catch (JSONException e) {
+                e.printStackTrace();
+                Log.d("bug","sibal");
+            }
         }
     }
-    @Override
+
+    /*@Override
     public void onBackPressed() {
         Toast.makeText(this, "Back button pressed.", Toast.LENGTH_SHORT).show();
         if (tts != null)  {
@@ -278,5 +307,6 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         }
         finish();
         super.onBackPressed();
-    }
+    }*/
+
 }
