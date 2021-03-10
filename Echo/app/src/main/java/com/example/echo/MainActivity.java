@@ -20,6 +20,9 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
+import com.github.chrisbanes.photoview.PhotoView;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -44,6 +47,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
     Intent intent;
     public SpeechRecognizer mRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
     public Button sttBtn;
+    PhotoView photoView;
     TextView textView;
     final int PERMISSION = 1;
     private TextToSpeech tts;
@@ -52,8 +56,8 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
     int port_num=8888;
     public static final int MY_UI = 1234;
     private WebSocket webSocket;
-    private String SERVER_PATH = "ws://192.168.35.42:3000";
-    //private String SERVER_PATH = "ws://192.168.35.203:3000";
+    //private String SERVER_PATH = "ws://192.168.35.42:3000";
+    private String SERVER_PATH = "ws://192.168.35.201:3000";
     String msg="";
     Socket socket = null;
     public OkHttpClient client;
@@ -73,8 +77,11 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
                     Manifest.permission.RECORD_AUDIO},PERMISSION);
         }
 
-        textView = (TextView)findViewById(R.id.sttResult);
-        final Button sttBtn = (Button) findViewById(R.id.sttStart);
+        //textView = (TextView)findViewById(R.id.sttResult);
+        sttBtn = (Button) findViewById(R.id.sttStart);
+        photoView = (PhotoView) findViewById(R.id.photo_view);
+        String imageUrl ="http://item.ssgcdn.com/04/06/09/item/1000055090604_i1_232.jpg";
+        Glide.with(this).load(imageUrl).into(photoView);
 
         intent=new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         intent.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE,getPackageName());
@@ -228,7 +235,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
 
             for(int i = 0; i < matches.size() ; i++){
                 tts_con=tts_con+matches.get(i);
-                textView.setText(matches.get(i));
+                sttBtn.setText(matches.get(i));
             }
             msg=tts_con;
             /*runOnUiThread(() -> {
