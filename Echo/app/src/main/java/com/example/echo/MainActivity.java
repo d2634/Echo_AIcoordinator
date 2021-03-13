@@ -80,8 +80,8 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         //textView = (TextView)findViewById(R.id.sttResult);
         sttBtn = (Button) findViewById(R.id.sttStart);
         photoView = (PhotoView) findViewById(R.id.photo_view);
-        String imageUrl ="http://item.ssgcdn.com/04/06/09/item/1000055090604_i1_232.jpg";
-        Glide.with(this).load(imageUrl).into(photoView);
+        //String imageUrl ="http://item.ssgcdn.com/04/06/09/item/1000055090604_i1_232.jpg";
+        //Glide.with(this).load(imageUrl).into(photoView);
 
         intent=new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         intent.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE,getPackageName());
@@ -288,13 +288,14 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
             super.onMessage(webSocket, s_text);
             JSONObject jsonObject = null;
             Log.d("speak",s_text);
+            //Glide.with(getApplicationContext()).load(imageUrl).into(photoView);
             //textView.setText(s_text);
 
             speakOut(s_text);
             try {
                 jsonObject = new JSONObject(s_text);
-
-                //textView.setText(text);
+                //jsonObject.getString("title");
+                //sttBtn.setText();
                 //speakOut(s_text);
 
                 jsonObject.put("isSent", false);

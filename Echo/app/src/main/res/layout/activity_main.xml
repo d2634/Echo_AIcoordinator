@@ -21,7 +21,9 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="4"
-        android:text="음성인식 시작" />
+        android:text="음성인식 시작"
+        android:backgroundTint="#F6F6F6"
+        android:textSize="23dp"/>
 
 
 </LinearLayout>
